@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scan2SafeIndia — Permanent QR Lost & Found</title>
+<meta name="description" content="Scan2SafeIndia permanent QR stickers for lost and found items.">
+<style>
+:root{--p:#0b63f6;--d:#102033;--m:#667085;--bg:#f6f8fc;--card:#fff;--ok:#147d42;--err:#b42318}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--d)}
+header{background:linear-gradient(135deg,#0b63f6,#1749a6);color:#fff;padding:22px 16px}nav{max-width:1000px;margin:auto;display:flex;justify-content:space-between;align-items:center}
+.brand{font-size:22px;font-weight:800}.tag{font-size:12px;opacity:.9}.pill{background:#fff2;color:#fff;border:1px solid #fff6;padding:6px 9px;border-radius:999px;font-size:12px;font-weight:700}
+main{max-width:1000px;margin:24px auto;padding:0 16px}.hero,.card{background:var(--card);border-radius:18px;padding:24px;box-shadow:0 8px 28px #10203312}.hero{margin-bottom:18px}
+.hero h1{margin:0 0 8px;font-size:32px}.hero p{color:var(--m);line-height:1.6}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.card h2{margin-top:0}label{display:block;font-weight:650;margin:14px 0 6px}input,textarea{width:100%;padding:12px;border:1px solid #d0d5dd;border-radius:10px;font:inherit;background:#fff}
+textarea{min-height:90px;resize:vertical}.check{font-weight:500}.check input{width:auto;margin-right:8px}
+.btn{border:0;border-radius:10px;padding:12px 16px;font-weight:750;cursor:pointer;background:var(--p);color:#fff;margin-top:16px}.btn:disabled{opacity:.55}
+.status{padding:12px;border-radius:10px;background:#eef4ff;margin:14px 0;line-height:1.5}.success{background:#eaf8ef;color:var(--ok)}.error{background:#fff0f0;color:var(--err)}
+.hidden{display:none!important}.contact{display:grid;gap:10px;margin-top:16px}.contact a{text-decoration:none;text-align:center;padding:12px;border-radius:10px;background:#e9f7ef;color:#146c3a;font-weight:750}
+.small{font-size:13px;color:var(--m)}footer{max-width:1000px;margin:28px auto;padding:16px;color:var(--m);font-size:13px;text-align:center}
+</style>
+</head>
+<body>
+<header><nav><div><div class="brand">Scan2SafeIndia</div><div class="tag">One permanent QR. A safer way to find lost items.</div></div><span class="pill">S2S</span></nav></header>
+<main>
+<section id="loading" class="card"><h2>Loading…</h2><p class="small">Connecting to Scan2SafeIndia.</p></section>
+<section id="home" class="hidden">
+<div class="hero"><h1>Permanent QR Lost & Found</h1><p>Scan a Scan2SafeIndia sticker to register your item or, if you found the item, to see the owner's chosen contact options.</p></div>
+<div class="grid">
+<div class="card"><h2>How it works</h2><p>1. Buy one permanent QR sticker.<br>2. Scan it and register your item.<br>3. If the item is lost, a finder scans the same QR.<br>4. The finder sees only the contact details you chose to share.</p></div>
+<div class="card"><h2>Privacy</h2><p>Do not enter a home address, Aadhaar number, password, OTP or other sensitive information. Only share information needed to return the item.</p></div>
+</div></section>
+
+<section id="register" class="card hidden">
+<h2>Register your item</h2><div id="registerStatus" class="status">QR ID: <strong id="registerQrId"></strong></div>
+<form id="registerForm">
+<label>Owner name *</label><input id="ownerName" maxlength="80" required>
+<label>Item name *</label><input id="itemName" maxlength="80" placeholder="e.g. School bag" required>
+<label>Item description</label><textarea id="itemDescription" maxlength="300" placeholder="Colour, model, identifying details…"></textarea>
+<label>Public contact phone *</label><input id="phone" type="tel" maxlength="20" placeholder="+91..." required>
+<label>Public contact email (optional)</label><input id="email" type="email" maxlength="120">
+<label>City (optional)</label><input id="city" maxlength="60" placeholder="e.g. Delhi">
+<label>Registration PIN *</label><input id="pin" inputmode="numeric" minlength="4" maxlength="12" required>
+<p class="small">Use the PIN supplied with your QR sticker. It helps stop another person from claiming an unused sticker.</p>
+<label class="check"><input id="allowPhone" type="checkbox" checked> Show a call button to the finder</label>
+<label class="check"><input id="allowEmail" type="checkbox"> Show an email button to the finder</label>
+<button class="btn" type="submit">Register QR</button>
+</form></section>
+
+<section id="found" class="card hidden">
+<h2>Found a Scan2SafeIndia item?</h2>
+<div class="status success">This QR is registered.</div>
+<p class="small">You do not need a PIN or account to contact the owner. The PIN is only for the person registering the QR.</p>
+<div id="foundDetails"></div>
+<div class="card" style="margin-top:18px;padding:18px;background:#f8fbff">
+<h3 style="margin-top:0">Help the owner find it</h3>
+<p class="small">If you are comfortable, share your current location. Your browser will ask for permission. We only save the location you explicitly choose to share.</p>
+<button class="btn" id="shareLocationBtn" type="button">📍 Share my location</button>
+<div id="locationStatus" class="status hidden"></div>
+</div>
+</section>
+<section id="notFound" class="card hidden"><h2>QR not found</h2><p>This QR is not currently registered with Scan2SafeIndia. Please check the QR and try again.</p></section>
+</main>
+<footer>© Scan2SafeIndia · Permanent QR lost & found service</footer>
+
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import{getAuth,signInAnonymously,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import{getFirestore,doc,getDoc,runTransaction,serverTimestamp,addDoc,collection}from"https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+/* Replace these values with your Firebase Web App config. */
+const firebaseConfig={
+ apiKey:"AIzaSyBXA1lSLcLfS5hAsx5keN88Vo5MOrvw-Fo",
+ authDomain:"scan2safeindia.firebaseapp.com",
+ projectId:"scan2safeindia",
+ storageBucket:"scan2safeindia.firebasestorage.app",
+ messagingSenderId:"1048201004514",
+ appId:"1:1048201004514:web:d595d2bd1bf1548cb465bb"
+};
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+const $=id=>document.getElementById(id);
+const sections=["loading","home","register","found","notFound"];
+const show=id=>sections.forEach(x=>$(x).classList.toggle("hidden",x!==id));
+const qrId=(new URLSearchParams(location.search).get("qr")||"").trim().toUpperCase();
+const validQr=id=>/^S2S-[A-Z0-9]{5,32}$/.test(id);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const safePhone=v=>String(v||"").replace(/[^0-9+]/g,"");
+
+async function reportLocation(){
+  const status=$("locationStatus"),btn=$("shareLocationBtn");
+  status.className="status";
+  status.textContent="Requesting your location permission…";
+  btn.disabled=true;
+
+  if(!navigator.geolocation){
+    status.className="status error";
+    status.textContent="Location is not supported by this browser.";
+    btn.disabled=false;
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    try{
+      await addDoc(collection(db,"locationReports"),{
+        qrId,
+        latitude:pos.coords.latitude,
+        longitude:pos.coords.longitude,
+        accuracy:pos.coords.accuracy||null,
+        reportedAt:serverTimestamp()
+      });
+      status.className="status success";
+      status.textContent="Location shared successfully. Thank you for helping the owner.";
+    }catch(e){
+      console.error(e);
+      status.className="status error";
+      status.textContent="Location could not be saved. Please try again.";
+    }finally{
+      btn.disabled=false;
+    }
+  },err=>{
+    status.className="status error";
+    status.textContent=err.code===1
+      ?"Location permission was denied. You can allow it in browser settings and try again."
+      :"Could not get your location. Please try again.";
+    btn.disabled=false;
+  },{enableHighAccuracy:true,timeout:10000,maximumAge:0});
+}
+
+async function start(){
+ if(firebaseConfig.apiKey.startsWith("PASTE_")){show("home");$("home").insertAdjacentHTML("beforeend",'<div class="card error"><b>Firebase setup required.</b> Add your Firebase Web App config to index.html.</div>');return}
+ try{
+  await signInAnonymously(auth);
+  onAuthStateChanged(auth,async user=>{if(!user)return;if(!qrId){show("home");return}if(!validQr(qrId)){show("notFound");return}await loadQr(user.uid)});
+ }catch(e){console.error(e);show("home");$("home").insertAdjacentHTML("beforeend",'<div class="card error">Firebase authentication failed. Check your config and Anonymous Authentication setting.</div>')}
+}
+async function loadQr(uid){
+ const s=await getDoc(doc(db,"qrTokens",qrId));
+ if(!s.exists()){show("notFound");return}
+ const t=s.data();
+ if(t.status==="registered"){
+  const i=await getDoc(doc(db,"publicItems",qrId));
+  if(!i.exists()){show("notFound");return}
+  renderFound(i.data());return
+ }
+ if(t.status==="unregistered"){$("registerQrId").textContent=qrId;$("registerForm").dataset.uid=uid;show("register");return}
+ show("notFound");
+}
+$("registerForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ const uid=$("registerForm").dataset.uid,pin=$("pin").value.trim();
+ const data={
+  ownerName:$("ownerName").value.trim(),itemName:$("itemName").value.trim(),
+  description:$("itemDescription").value.trim(),phone:$("phone").value.trim(),
+  email:$("email").value.trim(),city:$("city").value.trim(),
+  showPhone:$("allowPhone").checked,showEmail:$("allowEmail").checked,createdAt:serverTimestamp()
+ };
+ if(!data.ownerName||!data.itemName||!data.phone||!pin)return;
+ $("registerStatus").className="status";$("registerStatus").textContent="Registering…";
+ try{
+  await runTransaction(db,async tx=>{
+   const tr=doc(db,"qrTokens",qrId),ir=doc(db,"publicItems",qrId),ts=await tx.get(tr);
+   if(!ts.exists())throw new Error("QR_NOT_FOUND");
+   const t=ts.data();
+   if(t.status!=="unregistered"||t.activationPin!==pin)throw new Error("BAD_PIN");
+   tx.update(tr,{status:"registered",ownerUid:uid,registeredAt:serverTimestamp()});
+   tx.set(ir,data);
+  });
+  renderFound(data);
+ }catch(err){
+  console.error(err);$("registerStatus").className="status error";
+  $("registerStatus").textContent=err.message==="BAD_PIN"?"Incorrect PIN or this QR is already registered.":"Registration failed. Please try again.";
+ }
+});
+$("shareLocationBtn").addEventListener("click",reportLocation);
+
+function renderFound(d){
+ let h=`<p><b>Owner:</b> ${esc(d.ownerName)}</p><p><b>Item:</b> ${esc(d.itemName)}</p>`;
+ if(d.description)h+=`<p><b>Description:</b> ${esc(d.description)}</p>`;
+ if(d.city)h+=`<p><b>City:</b> ${esc(d.city)}</p>`;
+ h+='<div class="contact">';
+ if(d.showPhone&&d.phone)h+=`<a href="tel:${safePhone(d.phone)}">📞 Contact owner by phone</a>`;
+ if(d.showEmail&&d.email)h+=`<a href="mailto:${encodeURIComponent(d.email)}">✉️ Email owner</a>`;
+ h+='</div><p class="small">For your safety, arrange the return in a public/safe place and do not share passwords or OTPs.</p>';
+ $("foundDetails").innerHTML=h;show("found");
+}
+start();
+</script>
+</body></html>
